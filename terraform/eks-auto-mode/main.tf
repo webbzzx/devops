@@ -38,7 +38,7 @@ module "eks" {
 
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
-  cluster_endpoint_public_access_cidrs = local.sg_ingress_cidr
+  cluster_endpoint_public_access_cidrs = length(local.sg_ingress_cidr) > 0 ? local.sg_ingress_cidr : ["0.0.0.0/0"]
 
   enable_cluster_creator_admin_permissions = true
 
