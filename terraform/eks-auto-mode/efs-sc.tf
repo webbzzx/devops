@@ -15,8 +15,4 @@ resource "kubectl_manifest" "efs_sc" {
     ensureUniqueDirectory: "true" # optional
     reuseAccessPoint: "false" # optional
   YAML
-
-  lifecycle {
-    ignore_changes = [yaml_body]
-  }
 }
