@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+data:
+  filebeat.yml: |-
+    # To enable hints based autodiscover, remove `filebeat.inputs` configuration and uncomment this:
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: $${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: filestream
+            id: kubernetes-container-logs-$${data.kubernetes.pod.name}-$${data.kubernetes.container.id}
+            paths:
+            - /var/log/containers/*-$${data.kubernetes.container.id}.log
+            parsers:
+            - container: ~
+            prospector:
+              scanner:
+                fingerprint.enabled: true
+                symlinks: true
+            file_identity.fingerprint: ~
+
+    processors:
+      - add_host_metadata:
+      - add_kubernetes_metadata:
+          host: $${NODE_NAME}
+          matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+      - drop_fields:
+          fields: 
+            - "@metadata"
+            - beat.name
+            - beat.hostname
+            - ecs.version
+            - input.type
+            - kubernetes.labels
+            - kubernetes.replicaset
+            - kubernetes.node.uid
+            - kubernetes.node.labels
+            - kubernetes.node.hostname
+            - kubernetes.pod.uid
+            - kubernetes.namespace_uid
+            - kubernetes.namespace_labels
+            - container.id
+            - container.runtime
+            - host.ip
+            - host.name
+            - host.os.codename
+            - prospector.type
+            - log
+            - stream
+            - host.mac
+            - agent
+          ignore_missing: true
+      - add_fields:
+          target: ''
+          fields:
+            cluster: ${cluster_name}
+
+    output.kafka:
+      hosts: ${kafka_endpoint}
+      topic: '%%{[cluster]}-%%{[kubernetes.namespace]}'
+      partition.round_robin:
+        reachable_only: false
+      required_acks: 1
+      compression: gzip
+      max_message_bytes: 1000000
